@@ -52,6 +52,7 @@
         const XIcon = ({ className }) => <Icon className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></Icon>;
         const Trash2 = ({ className }) => <Icon className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></Icon>;
         const DownloadIcon = ({ className }) => <Icon className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></Icon>;
+        const SearchIcon = ({ className }) => <Icon className={className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></Icon>;
 
         // --- DICCIONARIO & DATOS ---
         const AUTHOR_ASSETS = {
@@ -112,8 +113,14 @@
           }).filter(quote => quote.id && quote.text && quote.author && quote.sourceType && quote.theme);
         }
 
+        const normalizeSearchText = (value) => String(value || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLocaleLowerCase('es');
+
         function App() {
           const [filters, setFilters] = useState({ themes: [], sourceTypes: [], authors: [], showFavs: false });
+          const [searchQuery, setSearchQuery] = useState('');
           const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
           const [currentIndex, setCurrentIndex] = useState(0);
           const [displayedText, setDisplayedText] = useState('');
@@ -168,20 +175,23 @@
           };
 
           const filteredQuotes = useMemo(() => {
+            const query = normalizeSearchText(searchQuery.trim());
             return quotesDb.filter(q => {
               const matchTheme = filters.themes.length === 0 || filters.themes.includes(q.theme);
               const matchSource = filters.sourceTypes.length === 0 || filters.sourceTypes.includes(q.sourceType);
               const matchAuthor = filters.authors.length === 0 || filters.authors.includes(q.author);
               const matchFav = !filters.showFavs || favorites.includes(q.id);
-              return matchTheme && matchSource && matchAuthor && matchFav;
+              const searchableText = normalizeSearchText(`${q.text} ${q.author} ${q.sourceType} ${q.theme}`);
+              const matchSearch = !query || searchableText.includes(query);
+              return matchTheme && matchSource && matchAuthor && matchFav && matchSearch;
             });
-          }, [quotesDb, filters, favorites]);
+          }, [quotesDb, filters, favorites, searchQuery]);
 
           const themes = [...new Set(quotesDb.map(q => q.theme))].sort();
           const sources = [...new Set(quotesDb.map(q => q.sourceType))].sort();
           const authors = [...new Set(quotesDb.map(q => q.author))].sort();
 
-          useEffect(() => { setCurrentIndex(0); }, [filters]);
+          useEffect(() => { setCurrentIndex(0); }, [filters, searchQuery]);
 
           const currentQuote = filteredQuotes[currentIndex] || null;
 
@@ -271,26 +281,47 @@
             });
           };
 
-          const clearFilters = () => setFilters({ themes: [], sourceTypes: [], authors: [], showFavs: false });
+          const clearFilters = () => {
+            setFilters({ themes: [], sourceTypes: [], authors: [], showFavs: false });
+            setSearchQuery('');
+          };
 
           const authorAssets = currentQuote && AUTHOR_ASSETS[currentQuote.author] ? AUTHOR_ASSETS[currentQuote.author] : AUTHOR_ASSETS["default"];
           const bgColor = currentQuote ? authorAssets.color : 'bg-gray-50';
           const isFav = currentQuote ? favorites.includes(currentQuote.id) : false;
           const isCharacterLeft = currentIndex % 2 === 0;
-          const activeFiltersCount = filters.themes.length + filters.sourceTypes.length + filters.authors.length + (filters.showFavs ? 1 : 0);
+          const activeFiltersCount = filters.themes.length + filters.sourceTypes.length + filters.authors.length + (filters.showFavs ? 1 : 0) + (searchQuery.trim() ? 1 : 0);
 
           return (
             <div className={`min-h-screen flex flex-col transition-colors duration-700 ease-in-out ${bgColor} selection:bg-black selection:text-white overflow-hidden`} >
               
-              <header className="w-full p-4 flex justify-between items-center z-10">
-                <h1 className="text-xl md:text-2xl font-bold tracking-tight font-mono uppercase">
-                  <span className="text-orange-500">PIXEL</span> <span className="text-cyan-500">WISDOM</span>
-                </h1>
-                {installPrompt && (
-                  <button onClick={handleInstallApp} className="flex items-center gap-2 px-3 py-2 bg-emerald-400 border-2 border-gray-900 font-bold text-xs uppercase shadow-[3px_3px_0_0_rgba(17,24,39,1)] active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all">
-                    <DownloadIcon className="w-4 h-4" /> Instalar App
-                  </button>
-                )}
+              <header className="w-full p-4 flex flex-col gap-3 z-10">
+                <div className="w-full flex justify-between items-center">
+                  <h1 className="text-xl md:text-2xl font-bold tracking-tight font-mono uppercase">
+                    <span className="text-orange-500">PIXEL</span> <span className="text-cyan-500">WISDOM</span>
+                  </h1>
+                  {installPrompt && (
+                    <button onClick={handleInstallApp} className="flex items-center gap-2 px-3 py-2 bg-emerald-400 border-2 border-gray-900 font-bold text-xs uppercase shadow-[3px_3px_0_0_rgba(17,24,39,1)] active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all">
+                      <DownloadIcon className="w-4 h-4" /> Instalar App
+                    </button>
+                  )}
+                </div>
+                <label className="relative w-full max-w-2xl mx-auto">
+                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={event => setSearchQuery(event.target.value)}
+                    placeholder="Buscar en el catálogo…"
+                    aria-label="Buscar frase, autor o fuente"
+                    className="w-full pl-10 pr-10 py-3 bg-white border-2 border-gray-900 rounded-lg font-mono text-sm shadow-[3px_3px_0_0_rgba(17,24,39,1)] focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                  {searchQuery && (
+                    <button type="button" onClick={() => setSearchQuery('')} aria-label="Borrar búsqueda" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-600 hover:text-gray-900">
+                      <XIcon className="w-5 h-5" />
+                    </button>
+                  )}
+                </label>
               </header>
 
               <main 
@@ -366,7 +397,10 @@
                 <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                   <div className="w-full max-w-lg bg-white border-4 border-gray-900 shadow-[8px_8px_0_0_rgba(17,24,39,1)] max-h-[85vh] flex flex-col">
                     <div className="flex justify-between items-center p-4 border-b-4 border-gray-900 bg-gray-50">
-                      <h2 className="font-bold text-xl uppercase">Filtros</h2>
+                  <div>
+                    <h2 className="font-bold text-xl uppercase">Filtros</h2>
+                    <p className="text-xs text-gray-600 mt-1" aria-live="polite">{filteredQuotes.length} de {quotesDb.length} frases</p>
+                  </div>
                       <button onClick={() => setIsFilterModalOpen(false)} className="p-1 hover:bg-gray-200 border-2 border-transparent hover:border-gray-900 rounded"><XIcon className="w-6 h-6" /></button>
                     </div>
                     <div className="flex-1 overflow-y-auto p-6 space-y-8">
@@ -377,7 +411,10 @@
                       
                       {['themes', 'sourceTypes', 'authors'].map((category, idx) => (
                         <div key={category}>
-                          <h3 className="text-gray-500 mb-3 font-bold uppercase text-sm">{['Temática', 'Origen', 'Personaje'][idx]}</h3>
+                          <h3 className="text-gray-500 mb-3 font-bold uppercase text-sm">
+                            {['Tema', 'Fuente', 'Autor / personaje'][idx]}
+                            {filters[category].length > 0 && <span className="ml-2 text-purple-700">({filters[category].length})</span>}
+                          </h3>
                           <div className="flex flex-wrap gap-2">
                             {(category === 'themes' ? themes : category === 'sourceTypes' ? sources : authors).map(item => (
                               <button 
