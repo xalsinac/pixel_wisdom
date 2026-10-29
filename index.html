@@ -200,7 +200,10 @@
             }
           }, [quotesDb]);
 
-          const currentQuote = filteredQuotes[currentIndex] || null;
+          // A filter can shrink the result list before the reset effect runs.
+          // Clamp synchronously so the render never reads an undefined quote.
+          const currentQuoteIndex = Math.min(currentIndex, Math.max(filteredQuotes.length - 1, 0));
+          const currentQuote = filteredQuotes[currentQuoteIndex] || null;
           const hasSpanishTranslation = Boolean(currentQuote?.spaQuote?.trim());
           const displayedQuoteText = language === 'spa' && hasSpanishTranslation ? currentQuote.spaQuote : currentQuote?.text || '';
           const isShowingEnglishFallback = language === 'spa' && currentQuote && !hasSpanishTranslation;
@@ -234,10 +237,12 @@
             
             setTimeout(() => {
               // 2. Cambiar frase oculta
-              setCurrentIndex((prev) => direction === 'next' 
-                ? (prev + 1) % filteredQuotes.length 
-                : (prev - 1 + filteredQuotes.length) % filteredQuotes.length
-              );
+              setCurrentIndex((prev) => {
+                const safeIndex = Math.min(prev, filteredQuotes.length - 1);
+                return direction === 'next'
+                  ? (safeIndex + 1) % filteredQuotes.length
+                  : (safeIndex - 1 + filteredQuotes.length) % filteredQuotes.length;
+              });
               
               // 3. Mover al lado contrario instantáneamente (sin transición)
               setIsDragging(true); 
@@ -305,7 +310,7 @@
           const authorAssets = currentQuote && AUTHOR_ASSETS[currentQuote.author] ? AUTHOR_ASSETS[currentQuote.author] : AUTHOR_ASSETS["default"];
           const bgColor = currentQuote ? authorAssets.color : 'bg-gray-50';
           const isFav = currentQuote ? favorites.includes(currentQuote.id) : false;
-          const isCharacterLeft = currentIndex % 2 === 0;
+          const isCharacterLeft = currentQuoteIndex % 2 === 0;
           const activeFiltersCount = filters.themes.length + filters.sourceTypes.length + filters.authors.length + (filters.showFavs ? 1 : 0) + (searchQuery.trim() ? 1 : 0);
 
           return (
