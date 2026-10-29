@@ -1,5 +1,5 @@
 // Aumentamos la versión para forzar la actualización
-const CACHE_NAME = 'pixel-wisdom-v5';
+const CACHE_NAME = 'pixel-wisdom-v6';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting(); // Fuerza al nuevo SW a instalarse inmediatamente

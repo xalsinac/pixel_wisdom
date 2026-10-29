@@ -106,6 +106,7 @@
             return {
               id: Number(record.id),
               text: record.quote,
+              spaQuote: record['spa-quote'] || record.frase || '',
               author: record.author,
               sourceType: record.source,
               theme: record.theme
@@ -121,6 +122,7 @@
         function App() {
           const [filters, setFilters] = useState({ themes: [], sourceTypes: [], authors: [], showFavs: false });
           const [searchQuery, setSearchQuery] = useState('');
+          const [language, setLanguage] = useState(() => localStorage.getItem('pixelWisdomLanguage') || 'eng');
           const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
           const [currentIndex, setCurrentIndex] = useState(0);
           const [displayedText, setDisplayedText] = useState('');
@@ -181,7 +183,7 @@
               const matchSource = filters.sourceTypes.length === 0 || filters.sourceTypes.includes(q.sourceType);
               const matchAuthor = filters.authors.length === 0 || filters.authors.includes(q.author);
               const matchFav = !filters.showFavs || favorites.includes(q.id);
-              const searchableText = normalizeSearchText(`${q.text} ${q.author} ${q.sourceType} ${q.theme}`);
+              const searchableText = normalizeSearchText(`${q.text} ${q.spaQuote} ${q.author} ${q.sourceType} ${q.theme}`);
               const matchSearch = !query || searchableText.includes(query);
               return matchTheme && matchSource && matchAuthor && matchFav && matchSearch;
             });
@@ -192,15 +194,23 @@
           const authors = [...new Set(quotesDb.map(q => q.author))].sort();
 
           useEffect(() => { setCurrentIndex(0); }, [filters, searchQuery]);
+          useEffect(() => {
+            if (filteredQuotes.length > 0) {
+              setCurrentIndex(Math.floor(Math.random() * filteredQuotes.length));
+            }
+          }, [quotesDb]);
 
           const currentQuote = filteredQuotes[currentIndex] || null;
+          const hasSpanishTranslation = Boolean(currentQuote?.spaQuote?.trim());
+          const displayedQuoteText = language === 'spa' && hasSpanishTranslation ? currentQuote.spaQuote : currentQuote?.text || '';
+          const isShowingEnglishFallback = language === 'spa' && currentQuote && !hasSpanishTranslation;
 
           useEffect(() => {
             if (!currentQuote || isAnimating) return;
             let i = 0;
             setDisplayedText('');
             setIsTyping(true);
-            const fullText = currentQuote.text;
+            const fullText = displayedQuoteText;
             const interval = setInterval(() => {
               setDisplayedText(fullText.substring(0, i + 1));
               i++;
@@ -210,7 +220,7 @@
               }
             }, 30);
             return () => clearInterval(interval);
-          }, [currentQuote, isAnimating]);
+          }, [currentQuote, isAnimating, language]);
 
           // Lógica avanzada de Swipe
           const changeQuoteAnimated = (direction) => {
@@ -286,6 +296,12 @@
             setSearchQuery('');
           };
 
+          const toggleLanguage = () => {
+            const nextLanguage = language === 'eng' ? 'spa' : 'eng';
+            setLanguage(nextLanguage);
+            localStorage.setItem('pixelWisdomLanguage', nextLanguage);
+          };
+
           const authorAssets = currentQuote && AUTHOR_ASSETS[currentQuote.author] ? AUTHOR_ASSETS[currentQuote.author] : AUTHOR_ASSETS["default"];
           const bgColor = currentQuote ? authorAssets.color : 'bg-gray-50';
           const isFav = currentQuote ? favorites.includes(currentQuote.id) : false;
@@ -296,15 +312,20 @@
             <div className={`min-h-screen flex flex-col transition-colors duration-700 ease-in-out ${bgColor} selection:bg-black selection:text-white overflow-hidden`} >
               
               <header className="w-full p-4 flex flex-col gap-3 z-10">
-                <div className="w-full flex justify-between items-center">
+                <div className="w-full flex flex-wrap justify-between items-center gap-2">
                   <h1 className="text-xl md:text-2xl font-bold tracking-tight font-mono uppercase">
                     <span className="text-orange-500">PIXEL</span> <span className="text-cyan-500">WISDOM</span>
                   </h1>
-                  {installPrompt && (
-                    <button onClick={handleInstallApp} className="flex items-center gap-2 px-3 py-2 bg-emerald-400 border-2 border-gray-900 font-bold text-xs uppercase shadow-[3px_3px_0_0_rgba(17,24,39,1)] active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all">
-                      <DownloadIcon className="w-4 h-4" /> Instalar App
+                  <div className="flex items-center gap-2">
+                    <button onClick={toggleLanguage} aria-label={language === 'eng' ? 'Cambiar idioma a español' : 'Switch language to English'} className="px-3 py-2 bg-white border-2 border-gray-900 font-bold text-xs uppercase shadow-[3px_3px_0_0_rgba(17,24,39,1)] active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all">
+                      {language === 'eng' ? 'ENG' : 'SPA'}
                     </button>
-                  )}
+                    {installPrompt && (
+                      <button onClick={handleInstallApp} className="flex items-center gap-2 px-3 py-2 bg-emerald-400 border-2 border-gray-900 font-bold text-xs uppercase shadow-[3px_3px_0_0_rgba(17,24,39,1)] active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all">
+                        <DownloadIcon className="w-4 h-4" /> Instalar App
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <label className="relative w-full max-w-2xl mx-auto">
                   <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -341,8 +362,9 @@
                       transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease'
                     }}
                   >
-                    <div onClick={() => { if (isTyping) { setDisplayedText(currentQuote.text); setIsTyping(false); } }} className="relative w-full bg-white border-4 border-gray-900 rounded-2xl p-6 md:p-8 shadow-[8px_8px_0_0_rgba(17,24,39,1)] cursor-pointer">
-                      <p className="font-mono text-lg md:text-2xl leading-relaxed text-gray-800 min-h-[120px] md:min-h-[100px]">
+                    <div onClick={() => { if (isTyping) { setDisplayedText(displayedQuoteText); setIsTyping(false); } }} className="relative w-full bg-white border-4 border-gray-900 rounded-2xl p-6 md:p-8 shadow-[8px_8px_0_0_rgba(17,24,39,1)] cursor-pointer">
+                      {isShowingEnglishFallback && <p className="mb-3 text-[10px] font-bold uppercase tracking-wide text-gray-500">Traducción pendiente · original en inglés</p>}
+                      <p className="whitespace-pre-line font-mono text-lg md:text-2xl leading-relaxed text-gray-800 min-h-[120px] md:min-h-[100px]">
                         {displayedText}{isTyping && <span className="inline-block w-2.5 h-5 bg-gray-900 ml-1 animate-pulse" />}
                       </p>
                       
