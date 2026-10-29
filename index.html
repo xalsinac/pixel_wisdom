@@ -62,16 +62,55 @@
           "default": { avatar: "👤", color: "bg-gray-50" }
         };
 
-        const QUOTES_DB = [
-          { id: 1, text: "Un mago nunca llega tarde, ni pronto; llega exactamente cuando se lo propone.", author: "Gandalf", theme: "Tiempo", sourceType: "Película" },
-          { id: 2, text: "The cake is a lie. (El pastel es una mentira).", author: "GLaDOS", theme: "Verdad", sourceType: "Videojuego" },
-          { id: 3, text: "Pienso, luego existo.", author: "René Descartes", theme: "Existencia", sourceType: "Realidad" },
-          { id: 4, text: "La ciencia es una forma de pensar mucho más que un cuerpo de conocimientos.", author: "Carl Sagan", theme: "Conocimiento", sourceType: "Realidad" }
-        ];
+        function parseCsv(csv) {
+          const rows = [];
+          let row = [];
+          let field = '';
+          let quoted = false;
 
-        const THEMES = [...new Set(QUOTES_DB.map(q => q.theme))].sort();
-        const SOURCES = [...new Set(QUOTES_DB.map(q => q.sourceType))].sort();
-        const AUTHORS = [...new Set(QUOTES_DB.map(q => q.author))].sort();
+          for (let i = 0; i < csv.length; i++) {
+            const char = csv[i];
+            if (quoted) {
+              if (char === '"' && csv[i + 1] === '"') {
+                field += '"';
+                i++;
+              } else if (char === '"') {
+                quoted = false;
+              } else {
+                field += char;
+              }
+            } else if (char === '"') {
+              quoted = true;
+            } else if (char === ',') {
+              row.push(field);
+              field = '';
+            } else if (char === '\n' || char === '\r') {
+              if (char === '\r' && csv[i + 1] === '\n') i++;
+              row.push(field);
+              rows.push(row);
+              row = [];
+              field = '';
+            } else {
+              field += char;
+            }
+          }
+          if (field || row.length) {
+            row.push(field);
+            rows.push(row);
+          }
+
+          const headers = (rows.shift() || []).map(value => value.replace(/^\uFEFF/, '').trim());
+          return rows.filter(values => values.some(value => value.trim())).map(values => {
+            const record = Object.fromEntries(headers.map((header, index) => [header, values[index] || '']));
+            return {
+              id: Number(record.id),
+              text: record.quote,
+              author: record.author,
+              sourceType: record.source,
+              theme: record.theme
+            };
+          }).filter(quote => quote.id && quote.text && quote.author && quote.sourceType && quote.theme);
+        }
 
         function App() {
           const [filters, setFilters] = useState({ themes: [], sourceTypes: [], authors: [], showFavs: false });
@@ -80,6 +119,9 @@
           const [displayedText, setDisplayedText] = useState('');
           const [isTyping, setIsTyping] = useState(false);
           const [favorites, setFavorites] = useState([]);
+          const [quotesDb, setQuotesDb] = useState([]);
+          const [quotesLoading, setQuotesLoading] = useState(true);
+          const [quotesLoadError, setQuotesLoadError] = useState(false);
           
           // Swipe Suave states
           const [dragX, setDragX] = useState(0);
@@ -92,6 +134,18 @@
           const [installPrompt, setInstallPrompt] = useState(null);
 
           useEffect(() => {
+            fetch('./quotes.csv', { cache: 'no-cache' })
+              .then(response => {
+                if (!response.ok) throw new Error('No se pudo cargar quotes.csv');
+                return response.text();
+              })
+              .then(csv => setQuotesDb(parseCsv(csv)))
+              .catch(error => {
+                console.error('Error cargando las frases:', error);
+                setQuotesLoadError(true);
+              })
+              .finally(() => setQuotesLoading(false));
+
             const savedFavs = localStorage.getItem('pixelWisdomFavs');
             if (savedFavs) {
               try { setFavorites(JSON.parse(savedFavs)); } catch (e) {}
@@ -114,14 +168,18 @@
           };
 
           const filteredQuotes = useMemo(() => {
-            return QUOTES_DB.filter(q => {
+            return quotesDb.filter(q => {
               const matchTheme = filters.themes.length === 0 || filters.themes.includes(q.theme);
               const matchSource = filters.sourceTypes.length === 0 || filters.sourceTypes.includes(q.sourceType);
               const matchAuthor = filters.authors.length === 0 || filters.authors.includes(q.author);
               const matchFav = !filters.showFavs || favorites.includes(q.id);
               return matchTheme && matchSource && matchAuthor && matchFav;
             });
-          }, [filters, favorites]);
+          }, [quotesDb, filters, favorites]);
+
+          const themes = [...new Set(quotesDb.map(q => q.theme))].sort();
+          const sources = [...new Set(quotesDb.map(q => q.sourceType))].sort();
+          const authors = [...new Set(quotesDb.map(q => q.author))].sort();
 
           useEffect(() => { setCurrentIndex(0); }, [filters]);
 
@@ -279,6 +337,15 @@
                       <div className="text-7xl md:text-8xl animate-[bounce_2s_infinite] drop-shadow-[0_8px_8px_rgba(0,0,0,0.3)]">{authorAssets.avatar}</div>
                     </div>
                   </div>
+                ) : quotesLoading ? (
+                  <div className="text-center bg-white p-8 border-4 border-gray-900 shadow-[8px_8px_0_0_rgba(17,24,39,1)]">
+                    <p className="text-lg font-bold">Cargando frases…</p>
+                  </div>
+                ) : quotesLoadError ? (
+                  <div className="text-center bg-white p-8 border-4 border-gray-900 shadow-[8px_8px_0_0_rgba(17,24,39,1)]">
+                    <p className="text-lg font-bold">No se pudo cargar el catálogo.</p>
+                    <p className="mt-2 text-sm">Comprueba que el archivo quotes.csv esté publicado junto a la web.</p>
+                  </div>
                 ) : (
                   <div className="text-center bg-white p-8 border-4 border-gray-900 shadow-[8px_8px_0_0_rgba(17,24,39,1)]">
                     <p className="text-lg font-bold">No se encontraron frases.</p>
@@ -312,7 +379,7 @@
                         <div key={category}>
                           <h3 className="text-gray-500 mb-3 font-bold uppercase text-sm">{['Temática', 'Origen', 'Personaje'][idx]}</h3>
                           <div className="flex flex-wrap gap-2">
-                            {(category === 'themes' ? THEMES : category === 'sourceTypes' ? SOURCES : AUTHORS).map(item => (
+                            {(category === 'themes' ? themes : category === 'sourceTypes' ? sources : authors).map(item => (
                               <button 
                                 key={item} 
                                 onClick={() => toggleFilter(category, item)} 

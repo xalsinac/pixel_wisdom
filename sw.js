@@ -1,5 +1,5 @@
 // Aumentamos la versión para forzar la actualización
-const CACHE_NAME = 'pixel-wisdom-v4';
+const CACHE_NAME = 'pixel-wisdom-v5';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting(); // Fuerza al nuevo SW a instalarse inmediatamente
@@ -11,7 +11,8 @@ self.addEventListener('install', (e) => {
         './index.html',
         './manifest.json',
         './icon-192.png',
-        './icon-512.png'
+        './icon-512.png',
+        './quotes.csv'
       ]);
     })
   );
@@ -35,6 +36,21 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+
+  // Refresh the catalogue from the network when available, while keeping the
+  // most recent version available offline.
+  if (new URL(e.request.url).pathname.endsWith('/quotes.csv')) {
+    e.respondWith(
+      fetch(e.request).then(async (response) => {
+        if (response.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(e.request, response.clone());
+        }
+        return response;
+      }).catch(async () => (await caches.match(e.request)) || Response.error())
+    );
+    return;
+  }
 
   e.respondWith(
     caches.match(e.request).then((res) => res || fetch(e.request)).catch(async () => {
