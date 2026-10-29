@@ -127,6 +127,7 @@
           const [currentIndex, setCurrentIndex] = useState(0);
           const [displayedText, setDisplayedText] = useState('');
           const [isTyping, setIsTyping] = useState(false);
+          const typingStep = useRef(1);
           const [favorites, setFavorites] = useState([]);
           const [quotesDb, setQuotesDb] = useState([]);
           const [quotesLoading, setQuotesLoading] = useState(true);
@@ -211,17 +212,18 @@
           useEffect(() => {
             if (!currentQuote || isAnimating) return;
             let i = 0;
+            typingStep.current = 1;
             setDisplayedText('');
             setIsTyping(true);
             const fullText = displayedQuoteText;
             const interval = setInterval(() => {
-              setDisplayedText(fullText.substring(0, i + 1));
-              i++;
+              i = Math.min(i + typingStep.current, fullText.length);
+              setDisplayedText(fullText.substring(0, i));
               if (i >= fullText.length) {
                 clearInterval(interval);
                 setIsTyping(false);
               }
-            }, 30);
+            }, 16);
             return () => clearInterval(interval);
           }, [currentQuote, isAnimating, language]);
 
@@ -367,11 +369,25 @@
                       transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease'
                     }}
                   >
-                    <div onClick={() => { if (isTyping) { setDisplayedText(displayedQuoteText); setIsTyping(false); } }} className="relative w-full bg-white border-4 border-gray-900 rounded-2xl p-6 md:p-8 shadow-[8px_8px_0_0_rgba(17,24,39,1)] cursor-pointer">
+                    <div className="relative w-full bg-white border-4 border-gray-900 rounded-2xl p-6 md:p-8 shadow-[8px_8px_0_0_rgba(17,24,39,1)]">
                       {isShowingEnglishFallback && <p className="mb-3 text-[10px] font-bold uppercase tracking-wide text-gray-500">Traducción pendiente · original en inglés</p>}
-                      <p className="whitespace-pre-line font-mono text-lg md:text-2xl leading-relaxed text-gray-800 min-h-[120px] md:min-h-[100px]">
+                      <p
+                        onClick={() => { if (isTyping) typingStep.current = 6; }}
+                        onKeyDown={event => {
+                          if (isTyping && (event.key === 'Enter' || event.key === ' ')) {
+                            event.preventDefault();
+                            typingStep.current = 6;
+                          }
+                        }}
+                        role={isTyping ? 'button' : undefined}
+                        tabIndex={isTyping ? 0 : undefined}
+                        aria-label={isTyping ? 'Acelerar aparición de la frase' : undefined}
+                        title={isTyping ? 'Toca o haz clic para acelerar el texto' : undefined}
+                        className="whitespace-pre-line font-mono text-lg md:text-2xl leading-relaxed text-gray-800 min-h-[120px] md:min-h-[100px] cursor-pointer"
+                      >
                         {displayedText}{isTyping && <span className="inline-block w-2.5 h-5 bg-gray-900 ml-1 animate-pulse" />}
                       </p>
+                      {isTyping && <p className="mt-2 text-right text-[10px] font-bold uppercase tracking-wide text-gray-400">Toca el texto para acelerarlo</p>}
                       
                       <div className="mt-6 flex justify-between items-end border-t-4 border-dashed border-gray-200 pt-4">
                         <div>
