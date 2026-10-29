@@ -6,8 +6,8 @@
     <meta name="theme-color" content="#f9fafb">
     
     <!-- Configuración PWA -->
-    <link rel="manifest" href=".manifest.json">
-    <link rel="icon" type="image/png" href=".icon-192.png">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/png" href="./icon-192.png">
     <link rel="apple-touch-icon" href="./icon-192.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -98,17 +98,19 @@
             }
             
             // Cazar el evento de instalación nativo
-            window.addEventListener('beforeinstallprompt', (e) => {
+            const handleBeforeInstallPrompt = (e) => {
               e.preventDefault();
               setInstallPrompt(e);
-            });
+            };
+            window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
           }, []);
 
           const handleInstallApp = async () => {
             if (!installPrompt) return;
             installPrompt.prompt();
             const { outcome } = await installPrompt.userChoice;
-            if (outcome === 'accepted') setInstallPrompt(null);
+            setInstallPrompt(null);
           };
 
           const filteredQuotes = useMemo(() => {

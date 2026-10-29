@@ -5,12 +5,13 @@ self.addEventListener('install', (e) => {
   self.skipWaiting(); // Fuerza al nuevo SW a instalarse inmediatamente
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
+      // Avoid caching the same URL twice: './' and 'index.html' resolve to
+      // the same resource when the app is hosted at the scope root.
       return cache.addAll([
-        './',
-        'index.html',
-        'manifest.json',
-        'icon-192.png',
-        'icon-512.png'
+        './index.html',
+        './manifest.json',
+        './icon-192.png',
+        './icon-512.png'
       ]);
     })
   );
@@ -33,12 +34,16 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
+
   e.respondWith(
-    caches.match(e.request).then((res) => {
-      // Devuelve la caché si existe, si no, va a internet
-      return res || fetch(e.request);
-    }).catch(() => {
-      return caches.match('index.html');
+    caches.match(e.request).then((res) => res || fetch(e.request)).catch(async () => {
+      // Only serve the app shell for page navigations, never for failed
+      // scripts, images, or other asset requests.
+      if (e.request.mode === 'navigate') {
+        return (await caches.match('./index.html')) || Response.error();
+      }
+      return Response.error();
     })
   );
 });
