@@ -1,312 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pixel Wisdom</title>
+  
+  <!-- Configuración PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#111827">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PixelWisdom">
+  <link rel="apple-touch-icon" href="/icon-192.png">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#f9fafb">
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    
-    <title>Pixel Wisdom</title>
-    
-    <!-- Tailwind CSS (via CDN) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- React & ReactDOM (via CDN) -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
-    <!-- Babel (Para traducir la sintaxis JSX de React en el navegador) -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Librerías -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <style>
-        @keyframes slideUp {
-            from { transform: translateY(100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        body { 
-            margin: 0; 
-            padding: 0; 
-            overflow-x: hidden; 
-            overscroll-behavior-x: none; /* Evita que el navegador navegue atrás/adelante al hacer swipe */
-            user-select: none; /* Sensación de app nativa */
-        }
-    </style>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+    .font-pixel { font-family: 'Press Start 2P', monospace; }
+    .font-mono { font-family: 'Space Mono', monospace; }
+    body { overscroll-behavior-y: none; overscroll-behavior-x: none; }
+  </style>
 </head>
-<body class="bg-gray-50">
-    <div id="root"></div>
+<body class="bg-slate-900 text-slate-100 min-h-screen selection:bg-orange-500 selection:text-slate-950 select-none">
+  <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useCallback, useRef, useMemo } = React;
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
 
-        // --- INLINE ICONS ---
-        const Icon = ({ children, className = "", fill = "none" }) => (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            {children}
-          </svg>
-        );
+    // Iconos integrados
+    const FilterIcon = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+      </svg>
+    );
 
-        const Heart = ({ className, fill }) => <Icon className={className} fill={fill}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></Icon>;
-        const ChevronLeft = ({ className }) => <Icon className={className}><path d="m15 18-6-6 6-6"/></Icon>;
-        const ChevronRight = ({ className }) => <Icon className={className}><path d="m9 18 6-6-6-6"/></Icon>;
-        const Share2 = ({ className }) => <Icon className={className}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></Icon>;
-        const Sparkles = ({ className }) => <Icon className={className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></Icon>;
-        const FilterIcon = ({ className }) => <Icon className={className}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></Icon>;
-        const XIcon = ({ className }) => <Icon className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></Icon>;
-        const Trash2 = ({ className }) => <Icon className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></Icon>;
+    const XIcon = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    );
 
-        // --- 1. DICCIONARIO DE PERSONAJES ---
-        const AUTHOR_ASSETS = {
-          "Gandalf": { avatar: "🧙‍♂️", color: "bg-slate-200" },
-          "GLaDOS": { avatar: "🤖", color: "bg-orange-50" },
-          "René Descartes": { avatar: "🦉", color: "bg-amber-50" },
-          "Carl Sagan": { avatar: "🔭", color: "bg-blue-50" },
-          "default": { avatar: "👤", color: "bg-gray-50" }
-        };
+    const QUOTES_DATA = [
+      { id: 1, quote: "No todos los que vagan están perdidos.", author: "Gandalf", theme: "Vida", source: "Películas" },
+      { id: 2, quote: "El misterio de la vida no es un problema a resolver, sino una realidad a experimentar.", author: "Dune", theme: "Filosofía", source: "Libros" },
+      { id: 3, quote: "La ciencia es el intento sistemático de someter la experiencia sensible a una regla lógica.", author: "Einstein", theme: "Ciencia", source: "Historia" },
+      { id: 4, quote: "La felicidad solo es real cuando se comparte.", author: "Into the Wild", theme: "Vida", source: "Películas" },
+      { id: 5, quote: "La medida del amor es amar sin medida.", author: "San Agustín", theme: "Amor", source: "Filosofía" }
+    ];
 
-        // --- 2. DATOS PUROS (Excel) ---
-        const QUOTES_DB = [
-          { id: 1, text: "Un mago nunca llega tarde, ni pronto; llega exactamente cuando se lo propone.", author: "Gandalf", theme: "Tiempo", sourceType: "Película" },
-          { id: 2, text: "The cake is a lie. (El pastel es una mentira).", author: "GLaDOS", theme: "Verdad", sourceType: "Videojuego" },
-          { id: 3, text: "Pienso, luego existo.", author: "René Descartes", theme: "Existencia", sourceType: "Realidad" },
-          { id: 4, text: "La ciencia es una forma de pensar mucho más que un cuerpo de conocimientos.", author: "Carl Sagan", theme: "Conocimiento", sourceType: "Realidad" }
-        ];
+    const AUTHOR_ASSETS = {
+      "Gandalf": { avatar: "🧙‍♂️", bg: "bg-slate-200" },
+      "Dune": { avatar: "🪐", bg: "bg-amber-100" },
+      "Einstein": { avatar: "💡", bg: "bg-blue-100" },
+      "Into the Wild": { avatar: "🏕️", bg: "bg-emerald-100" },
+      "San Agustín": { avatar: "📜", bg: "bg-red-100" },
+      "default": { avatar: "☕", bg: "bg-slate-200" }
+    };
 
-        const THEMES = [...new Set(QUOTES_DB.map(q => q.theme))].sort();
-        const SOURCES = [...new Set(QUOTES_DB.map(q => q.sourceType))].sort();
-        const AUTHORS = [...new Set(QUOTES_DB.map(q => q.author))].sort();
+    function App() {
+      const [currentIndex, setCurrentIndex] = useState(0);
+      const [displayedText, setDisplayedText] = useState("");
+      const [isTyping, setIsTyping] = useState(true);
+      const [favorites, setFavorites] = useState(() => JSON.parse(localStorage.getItem("pw_favs") || "[]"));
+      
+      // Estado de filtros avanzados
+      const [isFilterOpen, setIsFilterOpen] = useState(false);
+      const [filters, setFilters] = useState({ theme: [], source: [] });
 
-        function App() {
-          const [filters, setFilters] = useState({ themes: [], sourceTypes: [], authors: [], showFavs: false });
-          const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-          const [currentIndex, setCurrentIndex] = useState(0);
-          const [displayedText, setDisplayedText] = useState('');
-          const [isTyping, setIsTyping] = useState(false);
-          const [favorites, setFavorites] = useState([]);
-          
-          const touchStartX = useRef(0);
-          const touchEndX = useRef(0);
+      // Estado de Swipe
+      const [dragX, setDragX] = useState(0);
+      const [isDragging, setIsDragging] = useState(false);
+      const touchStartX = useRef(0);
 
-          useEffect(() => {
-            const savedFavs = localStorage.getItem('pixelWisdomFavs');
-            if (savedFavs) {
-              try { setFavorites(JSON.parse(savedFavs)); } catch (e) {}
-            }
-          }, []);
+      // Extraer categorías únicas para el menú
+      const availableThemes = [...new Set(QUOTES_DATA.map(q => q.theme))];
+      const availableSources = [...new Set(QUOTES_DATA.map(q => q.source))];
 
-          const filteredQuotes = useMemo(() => {
-            return QUOTES_DB.filter(q => {
-              const matchTheme = filters.themes.length === 0 || filters.themes.includes(q.theme);
-              const matchSource = filters.sourceTypes.length === 0 || filters.sourceTypes.includes(q.sourceType);
-              const matchAuthor = filters.authors.length === 0 || filters.authors.includes(q.author);
-              const matchFav = !filters.showFavs || favorites.includes(q.id);
-              return matchTheme && matchSource && matchAuthor && matchFav;
-            });
-          }, [filters, favorites]);
+      const filteredQuotes = useMemo(() => {
+        let result = QUOTES_DATA;
+        if (filters.favorites) {
+          result = result.filter(q => favorites.includes(q.id));
+        }
+        if (filters.theme.length > 0) {
+          result = result.filter(q => filters.theme.includes(q.theme));
+        }
+        if (filters.source.length > 0) {
+          result = result.filter(q => filters.source.includes(q.source));
+        }
+        return result.length > 0 ? result : [QUOTES_DATA[0]];
+      }, [filters, favorites]);
 
-          useEffect(() => { setCurrentIndex(0); }, [filters]);
+      const currentQuote = filteredQuotes[currentIndex] || filteredQuotes[0];
+      const asset = AUTHOR_ASSETS[currentQuote.author] || AUTHOR_ASSETS["default"];
+      const isAvatarRight = currentIndex % 2 !== 0;
 
-          const currentQuote = filteredQuotes[currentIndex] || null;
+      useEffect(() => {
+        setDisplayedText("");
+        setIsTyping(true);
+        let i = 0;
+        const speed = 25;
+        const timer = setInterval(() => {
+          if (i < currentQuote.quote.length) {
+            setDisplayedText(currentQuote.quote.slice(0, i + 1));
+            i++;
+          } else {
+            setIsTyping(false);
+            clearInterval(timer);
+          }
+        }, speed);
+        return () => clearInterval(timer);
+      }, [currentIndex, currentQuote]);
 
-          useEffect(() => {
-            if (!currentQuote) return;
-            let i = 0;
-            setDisplayedText('');
-            setIsTyping(true);
-            const fullText = currentQuote.text;
-            const interval = setInterval(() => {
-              setDisplayedText(fullText.substring(0, i + 1));
-              i++;
-              if (i >= fullText.length) {
-                clearInterval(interval);
-                setIsTyping(false);
-              }
-            }, 40);
-            return () => clearInterval(interval);
-          }, [currentQuote]);
+      const handleNext = () => {
+        setDragX(0);
+        setCurrentIndex((prev) => (prev + 1) % filteredQuotes.length);
+      };
 
-          const nextQuote = useCallback(() => {
-            if (filteredQuotes.length <= 1) return;
-            setCurrentIndex((prev) => (prev + 1) % filteredQuotes.length);
-          }, [filteredQuotes.length]);
+      const handlePrev = () => {
+        setDragX(0);
+        setCurrentIndex((prev) => (prev - 1 + filteredQuotes.length) % filteredQuotes.length);
+      };
 
-          const prevQuote = useCallback(() => {
-            if (filteredQuotes.length <= 1) return;
-            setCurrentIndex((prev) => (prev - 1 + filteredQuotes.length) % filteredQuotes.length);
-          }, [filteredQuotes.length]);
+      // Swipe Handlers
+      const handleTouchStart = (e) => {
+        touchStartX.current = e.touches[0].clientX;
+        setIsDragging(true);
+      };
 
-          useEffect(() => {
-            const handleKeyDown = (e) => {
-              if (e.key === 'ArrowRight') nextQuote();
-              if (e.key === 'ArrowLeft') prevQuote();
-            };
-            window.addEventListener('keydown', handleKeyDown);
-            return () => window.removeEventListener('keydown', handleKeyDown);
-          }, [nextQuote, prevQuote]);
+      const handleTouchMove = (e) => {
+        if (!isDragging) return;
+        const currentX = e.touches[0].clientX;
+        const diff = currentX - touchStartX.current;
+        setDragX(diff * 0.7); 
+      };
 
-          const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
-          const handleTouchEnd = (e) => {
-            touchEndX.current = e.changedTouches[0].clientX;
-            const swipeDistance = touchStartX.current - touchEndX.current;
-            if (swipeDistance > 50) nextQuote();
-            else if (swipeDistance < -50) prevQuote();
-          };
+      const handleTouchEnd = () => {
+        setIsDragging(false);
+        if (dragX < -70) {
+          handleNext();
+        } else if (dragX > 70) {
+          handlePrev();
+        } else {
+          setDragX(0);
+        }
+      };
 
-          const toggleFavorite = (id) => {
-            setFavorites(prev => {
-              const newFavs = prev.includes(id) ? prev.filter(favId => favId !== id) : [...prev, id];
-              localStorage.setItem('pixelWisdomFavs', JSON.stringify(newFavs));
-              return newFavs;
-            });
-          };
+      const toggleFavorite = (id) => {
+        const next = favorites.includes(id) ? favorites.filter(f => f !== id) : [...favorites, id];
+        setFavorites(next);
+        localStorage.setItem("pw_favs", JSON.stringify(next));
+      };
 
-          const handleShare = async () => {
-            if (!currentQuote) return;
-            const shareData = { title: 'Pixel Wisdom', text: `"${currentQuote.text}" - ${currentQuote.author}`, url: window.location.href };
-            try {
-              if (navigator.share) await navigator.share(shareData);
-              else navigator.clipboard.writeText(shareData.text);
-            } catch (err) { console.error('Error sharing:', err); }
-          };
+      const toggleFilter = (category, value) => {
+        setFilters(prev => {
+          const current = prev[category];
+          const updated = current.includes(value) ? current.filter(item => item !== value) : [...current, value];
+          return { ...prev, [category]: updated };
+        });
+        setCurrentIndex(0);
+      };
 
-          const handleBubbleClick = () => {
-            if (isTyping && currentQuote) {
-              setDisplayedText(currentQuote.text);
-              setIsTyping(false);
-            }
-          };
+      return (
+        <div 
+          className="min-h-screen flex flex-col justify-between p-4 max-w-md mx-auto relative overflow-hidden"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {/* Header */}
+          <header className="flex justify-between items-center py-2 z-10">
+            <h1 className="text-sm font-pixel tracking-wider">
+              <span className="text-orange-500">PIXEL</span> <span className="text-cyan-400">WISDOM</span>
+            </h1>
+            <button 
+              onClick={() => toggleFavorite(currentQuote.id)}
+              className={`p-2 rounded border-2 border-slate-700 transition-colors ${favorites.includes(currentQuote.id) ? 'bg-red-500 text-white' : 'bg-slate-800'}`}
+            >
+              ♥
+            </button>
+          </header>
 
-          const toggleFilter = (category, value) => {
-            setFilters(prev => {
-              const currentList = prev[category];
-              const isSelected = currentList.includes(value);
-              return { ...prev, [category]: isSelected ? currentList.filter(item => item !== value) : [...currentList, value] };
-            });
-          };
-
-          const clearFilters = () => setFilters({ themes: [], sourceTypes: [], authors: [], showFavs: false });
-
-          const authorAssets = currentQuote && AUTHOR_ASSETS[currentQuote.author] ? AUTHOR_ASSETS[currentQuote.author] : AUTHOR_ASSETS["default"];
-          const bgColor = currentQuote ? authorAssets.color : 'bg-gray-50';
-          const isFav = currentQuote ? favorites.includes(currentQuote.id) : false;
-          const isCharacterLeft = currentIndex % 2 === 0;
-          const activeFiltersCount = filters.themes.length + filters.sourceTypes.length + filters.authors.length + (filters.showFavs ? 1 : 0);
-
-          return (
-            <div className={`min-h-screen flex flex-col transition-colors duration-700 ease-in-out ${bgColor} font-sans selection:bg-black selection:text-white`} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-              <header className="w-full p-6 flex justify-between items-center z-10">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-6 h-6 text-gray-800" strokeWidth={2.5} />
-                  <h1 className="text-xl md:text-2xl font-bold tracking-tight font-mono uppercase">
-                    <span className="text-orange-500">PIXEL</span> <span className="text-cyan-500">WISDOM</span>
-                  </h1>
-                </div>
-              </header>
-
-              <main className="flex-1 flex flex-col items-center justify-center relative px-4 w-full max-w-4xl mx-auto">
-                <button onClick={prevQuote} className="hidden md:flex absolute left-0 p-4 bg-white border-4 border-gray-900 rounded-full shadow-[6px_6px_0_0_rgba(17,24,39,1)] hover:-translate-x-1 transition-transform active:translate-y-[4px] active:translate-x-[4px] active:shadow-none z-20"><ChevronLeft className="w-8 h-8" /></button>
-
-                {filteredQuotes.length > 0 ? (
-                  <div className="flex flex-col w-full max-w-2xl mt-[-10vh]">
-                    <div onClick={handleBubbleClick} className="relative w-full bg-white border-4 border-gray-900 rounded-2xl p-6 md:p-8 shadow-[8px_8px_0_0_rgba(17,24,39,1)] cursor-pointer">
-                      <p className="font-mono text-lg md:text-2xl leading-relaxed text-gray-800 min-h-[120px] md:min-h-[100px]">
-                        {displayedText}{isTyping && <span className="inline-block w-2.5 h-5 bg-gray-900 ml-1 animate-pulse" />}
-                      </p>
-                      <div className="mt-6 flex justify-between items-end border-t-4 border-dashed border-gray-200 pt-4">
-                        <div>
-                          <p className="font-bold text-gray-900 uppercase tracking-widest text-sm md:text-base">- {currentQuote.author}</p>
-                          <div className="flex gap-2 mt-2">
-                            <span className="text-xs bg-purple-100 text-purple-800 font-bold px-2 py-1 rounded border-2 border-purple-900 font-mono">{currentQuote.theme}</span>
-                            <span className="text-xs bg-teal-100 text-teal-800 font-bold px-2 py-1 rounded border-2 border-teal-900 font-mono">{currentQuote.sourceType}</span>
-                          </div>
-                        </div>
-                        <div className="flex gap-3">
-                          <button onClick={(e) => { e.stopPropagation(); handleShare(); }} className="p-2 border-2 border-transparent hover:border-gray-900 rounded transition-all"><Share2 className="w-5 h-5 text-gray-800" /></button>
-                          <button onClick={(e) => { e.stopPropagation(); toggleFavorite(currentQuote.id); }} className="p-2 border-2 border-transparent hover:border-red-900 rounded transition-all"><Heart className={`w-6 h-6 transition-all ${isFav ? 'text-red-500 scale-110' : 'text-gray-400'}`} fill={isFav ? "currentColor" : "none"} /></button>
-                        </div>
-                      </div>
-                      <div className={`absolute -bottom-6 w-0 h-0 border-t-[24px] border-t-gray-900 transition-all duration-500 ${isCharacterLeft ? 'left-12 border-l-[20px] border-l-transparent' : 'right-12 border-r-[20px] border-r-transparent'}`}>
-                        <div className={`absolute -top-[28px] w-0 h-0 border-t-[16px] border-t-white ${isCharacterLeft ? '-left-[18px] border-l-[14px] border-l-transparent' : '-right-[18px] border-r-[14px] border-r-transparent'}`} />
-                      </div>
-                    </div>
-                    <div className={`flex w-full mt-8 transition-all duration-500 ${isCharacterLeft ? 'justify-start pl-4 md:pl-8' : 'justify-end pr-4 md:pr-8'}`}>
-                      <div className="text-7xl md:text-8xl animate-[bounce_2s_infinite] drop-shadow-[0_8px_8px_rgba(0,0,0,0.3)]">{authorAssets.avatar}</div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center font-mono text-gray-900 bg-white p-8 border-4 border-gray-900 shadow-[8px_8px_0_0_rgba(17,24,39,1)]">
-                    <p className="text-lg font-bold">No se encontraron frases con estos filtros.</p>
-                    <button onClick={clearFilters} className="mt-4 px-4 py-2 bg-purple-200 border-2 border-gray-900 font-bold uppercase hover:bg-purple-300">Limpiar Filtros</button>
-                  </div>
-                )}
-                <button onClick={nextQuote} className="hidden md:flex absolute right-0 p-4 bg-white border-4 border-gray-900 rounded-full shadow-[6px_6px_0_0_rgba(17,24,39,1)] hover:translate-x-1 transition-transform active:translate-y-[4px] active:translate-x-[-4px] active:shadow-none z-20"><ChevronRight className="w-8 h-8" /></button>
-              </main>
-
-              <footer className="w-full p-4 flex justify-center z-10 sticky bottom-0">
-                <button onClick={() => setIsFilterModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-white border-4 border-gray-900 font-mono font-bold uppercase text-gray-900 shadow-[6px_6px_0_0_rgba(17,24,39,1)] active:translate-y-[4px] active:translate-x-[4px] active:shadow-none transition-all">
-                  <FilterIcon className="w-5 h-5" /> Filtros Avanzados
-                  {activeFiltersCount > 0 && <span className="bg-teal-400 text-gray-900 px-2 py-0.5 rounded-full border-2 border-gray-900 text-sm ml-2">{activeFiltersCount}</span>}
-                </button>
-              </footer>
-
-              {isFilterModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                  <div className="w-full max-w-lg bg-white border-4 border-gray-900 shadow-[8px_8px_0_0_rgba(17,24,39,1)] max-h-[85vh] flex flex-col animate-[slideUp_0.3s_ease-out]">
-                    <div className="flex justify-between items-center p-4 border-b-4 border-gray-900 bg-gray-50">
-                      <h2 className="font-mono font-bold text-xl uppercase">Filtros</h2>
-                      <button onClick={() => setIsFilterModalOpen(false)} className="p-1 hover:bg-gray-200 border-2 border-transparent hover:border-gray-900 rounded"><XIcon className="w-6 h-6" /></button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-6 font-mono space-y-8">
-                      <div className="flex items-center justify-between p-4 border-4 border-gray-900 bg-red-50 cursor-pointer active:bg-red-100" onClick={() => setFilters(p => ({ ...p, showFavs: !p.showFavs }))}>
-                        <span className="font-bold uppercase text-red-900">Solo Favoritos</span>
-                        <Heart className={`w-6 h-6 ${filters.showFavs ? 'text-red-500' : 'text-gray-400'}`} fill={filters.showFavs ? "currentColor" : "none"} />
-                      </div>
-                      <div>
-                        <h3 className="text-gray-500 mb-3 font-bold uppercase text-sm">Temática</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {THEMES.map(theme => (
-                            <button key={theme} onClick={() => toggleFilter('themes', theme)} className={`px-3 py-1.5 border-2 border-gray-900 font-bold transition-all ${filters.themes.includes(theme) ? 'bg-purple-400 text-white shadow-[2px_2px_0_0_rgba(17,24,39,1)] translate-x-[-2px] translate-y-[-2px]' : 'bg-white text-gray-700 hover:bg-gray-100'}`}>{theme}</button>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="text-gray-500 mb-3 font-bold uppercase text-sm">Origen</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {SOURCES.map(source => (
-                            <button key={source} onClick={() => toggleFilter('sourceTypes', source)} className={`px-3 py-1.5 border-2 border-gray-900 font-bold transition-all ${filters.sourceTypes.includes(source) ? 'bg-teal-400 text-gray-900 shadow-[2px_2px_0_0_rgba(17,24,39,1)] translate-x-[-2px] translate-y-[-2px]' : 'bg-white text-gray-700 hover:bg-gray-100'}`}>{source}</button>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="text-gray-500 mb-3 font-bold uppercase text-sm">Personaje</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {AUTHORS.map(author => (
-                            <button key={author} onClick={() => toggleFilter('authors', author)} className={`px-3 py-1.5 border-2 border-gray-900 font-bold transition-all ${filters.authors.includes(author) ? 'bg-amber-400 text-gray-900 shadow-[2px_2px_0_0_rgba(17,24,39,1)] translate-x-[-2px] translate-y-[-2px]' : 'bg-white text-gray-700 hover:bg-gray-100'}`}>{author}</button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="p-4 border-t-4 border-gray-900 bg-white flex gap-4">
-                      <button onClick={clearFilters} className="flex-1 py-3 border-4 border-gray-900 font-mono font-bold uppercase flex justify-center items-center gap-2 hover:bg-gray-100"><Trash2 className="w-5 h-5" /> Limpiar</button>
-                      <button onClick={() => setIsFilterModalOpen(false)} className="flex-1 py-3 bg-gray-900 text-white font-mono font-bold uppercase border-4 border-gray-900">Ver ({filteredQuotes.length})</button>
-                    </div>
-                  </div>
-                </div>
-              )}
+          {/* Tarjeta central animada */}
+          <main 
+            className="flex-1 flex flex-col justify-center my-auto transition-transform w-full z-0"
+            style={{
+              transform: `translateX(${dragX}px)`,
+              transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
+              opacity: Math.max(0.3, 1 - Math.abs(dragX) / 300)
+            }}
+          >
+            <div 
+              onClick={() => { if (isTyping) { setDisplayedText(currentQuote.quote); setIsTyping(false); } }}
+              className="w-full bg-slate-100 text-slate-900 border-4 border-slate-950 p-5 rounded-lg shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] relative mb-8 min-h-[140px] flex flex-col justify-between"
+            >
+              <p className="font-mono text-base font-medium leading-relaxed">
+                "{displayedText}"
+                {isTyping && <span className="inline-block w-2 h-4 bg-slate-900 ml-1 animate-pulse"></span>}
+              </p>
+              <div className="text-right text-xs font-mono text-slate-500 mt-3 font-bold">
+                — {currentQuote.author}
+              </div>
+              
+              <div className={`absolute -bottom-3 ${isAvatarRight ? 'right-10' : 'left-10'} w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[12px] border-t-slate-950`}></div>
             </div>
-          );
-        }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+            <div className={`flex ${isAvatarRight ? 'justify-end' : 'justify-start'} w-full`}>
+              <div className={`w-24 h-24 ${asset.bg} border-4 border-slate-950 rounded-2xl flex items-center justify-center text-4xl shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]`}>
+                {asset.avatar}
+              </div>
+            </div>
+          </main>
 
-    <!-- Registro del Service Worker para PWA -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker registrado:', reg.scope))
-                    .catch(err => console.log('Error al registrar Service Worker:', err));
-            });
-        }
-    </script>
+          {/* Menú Inferior */}
+          <footer className="space-y-4 pb-2 z-10">
+            <button 
+              onClick={() => setIsFilterOpen(true)}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-slate-800 border-2 border-slate-700 rounded font-mono text-sm active:bg-slate-700"
+            >
+              <FilterIcon /> 
+              Filtros {(filters.theme.length > 0 || filters.source.length > 0 || filters.favorites) && "(Activos)"}
+            </button>
+
+            <div className="flex justify-between items-center text-xs font-mono text-slate-400">
+              <button onClick={handlePrev} className="px-4 py-2 border-2 border-slate-700 rounded bg-slate-800 active:bg-slate-700">← Ant</button>
+              <span>{currentIndex + 1} / {filteredQuotes.length}</span>
+              <button onClick={handleNext} className="px-4 py-2 border-2 border-slate-700 rounded bg-slate-800 active:bg-slate-700">Sig →</button>
+            </div>
+          </footer>
+
+          {/* Modal de Filtros */}
+          {isFilterOpen && (
+            <div className="absolute inset-0 bg-slate-900/95 z-50 flex flex-col p-6 font-mono">
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-xl font-bold">Filtros</h2>
+                <button onClick={() => setIsFilterOpen(false)} className="p-2 bg-slate-800 rounded border-2 border-slate-700">
+                  <XIcon />
+                </button>
+              </div>
+
+              <div className="space-y-6 overflow-y-auto pb-6">
+                <div>
+                  <h3 className="text-sm text-slate-400 mb-3 uppercase tracking-wider">Especiales</h3>
+                  <button 
+                    onClick={() => { setFilters(p => ({...p, favorites: !p.favorites})); setCurrentIndex(0); }}
+                    className={`px-3 py-2 border-2 rounded text-sm w-full text-left ${filters.favorites ? 'bg-red-500 border-red-500 text-white font-bold' : 'border-slate-700 bg-slate-800'}`}
+                  >
+                    ❤️ Solo Favoritos
+                  </button>
+                </div>
+
+                <div>
+                  <h3 className="text-sm text-slate-400 mb-3 uppercase tracking-wider">Temáticas</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {availableThemes.map(theme => (
+                      <button 
+                        key={theme} 
+                        onClick={() => toggleFilter('theme', theme)}
+                        className={`px-3 py-1.5 border-2 rounded text-sm ${filters.theme.includes(theme) ? 'bg-cyan-500 border-cyan-500 text-slate-900 font-bold' : 'border-slate-700 bg-slate-800'}`}
+                      >
+                        {theme}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm text-slate-400 mb-3 uppercase tracking-wider">Orígenes</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {availableSources.map(source => (
+                      <button 
+                        key={source} 
+                        onClick={() => toggleFilter('source', source)}
+                        className={`px-3 py-1.5 border-2 rounded text-sm ${filters.source.includes(source) ? 'bg-orange-500 border-orange-500 text-slate-900 font-bold' : 'border-slate-700 bg-slate-800'}`}
+                      >
+                        {source}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => { setFilters({ theme: [], source: [] }); setCurrentIndex(0); }}
+                className="mt-auto py-3 bg-slate-800 border-2 border-slate-700 rounded text-sm active:bg-slate-700"
+              >
+                Limpiar Filtros
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+    // Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW error:', err));
+      });
+    }
+  </script>
 </body>
 </html>
