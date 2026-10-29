@@ -26,8 +26,8 @@
     body { overscroll-behavior-y: none; overscroll-behavior-x: none; }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen selection:bg-orange-500 selection:text-slate-950 select-none">
-  <div id="root"></div>
+<body class="bg-slate-50 text-slate-900 min-h-screen selection:bg-amber-400 selection:text-slate-950 select-none">
+      <div id="root"></div>
 
   <script type="text/babel">
     const { useState, useEffect, useMemo, useRef } = React;
@@ -207,8 +207,10 @@
                 — {currentQuote.author}
               </div>
               
-              <div className={`absolute -bottom-3 ${isAvatarRight ? 'right-10' : 'left-10'} w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[12px] border-t-slate-950`}></div>
-            </div>
+              <div className={`absolute -bottom-[16px] ${isAvatarRight ? 'right-10' : 'left-10'} w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[16px] border-t-slate-950`}>
+               <div className="absolute -top-[16px] -left-[8px] w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[12px] border-t-slate-100"></div>
+              </div>            
+              </div>
 
             <div className={`flex ${isAvatarRight ? 'justify-end' : 'justify-start'} w-full`}>
               <div className={`w-24 h-24 ${asset.bg} border-4 border-slate-950 rounded-2xl flex items-center justify-center text-4xl shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]`}>
