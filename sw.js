@@ -1,5 +1,5 @@
 // Aumentamos la versión para forzar la actualización
-const CACHE_NAME = 'pixel-wisdom-v8';
+const CACHE_NAME = 'pixel-wisdom-v10';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting(); // Fuerza al nuevo SW a instalarse inmediatamente
@@ -40,6 +40,19 @@ self.addEventListener('fetch', (e) => {
   // Refresh the catalogue from the network when available, while keeping the
   // most recent version available offline.
   if (new URL(e.request.url).pathname.endsWith('/quotes.csv')) {
+    e.respondWith(
+      fetch(e.request).then(async (response) => {
+        if (response.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(e.request, response.clone());
+        }
+        return response;
+      }).catch(async () => (await caches.match(e.request)) || Response.error())
+    );
+    return;
+  }
+
+  if (new URL(e.request.url).origin === self.location.origin && new URL(e.request.url).pathname.includes('/author/')) {
     e.respondWith(
       fetch(e.request).then(async (response) => {
         if (response.ok) {

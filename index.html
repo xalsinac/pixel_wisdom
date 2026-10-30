@@ -63,7 +63,28 @@
           "default": { avatar: "👤", color: "bg-gray-50" }
         };
 
+        function AuthorArtwork({ author, fallback }) {
+          const [imageFailed, setImageFailed] = useState(false);
+          if (imageFailed) {
+            return <div className="text-7xl md:text-8xl" aria-hidden="true">{fallback}</div>;
+          }
+
+          return (
+            <img
+              src={`./author/${encodeURIComponent(author)}.png`}
+              alt={`Personaje pixel art: ${author}`}
+              className="h-full w-auto max-w-full object-contain drop-shadow-[0_8px_8px_rgba(0,0,0,0.3)]"
+              style={{ imageRendering: 'pixelated' }}
+              onError={() => setImageFailed(true)}
+            />
+          );
+        }
+
         function parseCsv(csv) {
+          const headerLine = csv.split(/\r?\n/).find(line => /\bid\b/i.test(line) && /quote/i.test(line)) || '';
+          const semicolonCount = (headerLine.match(/;/g) || []).length;
+          const commaCount = (headerLine.match(/,/g) || []).length;
+          const delimiter = semicolonCount > commaCount ? ';' : ',';
           const rows = [];
           let row = [];
           let field = '';
@@ -82,7 +103,7 @@
               }
             } else if (char === '"') {
               quoted = true;
-            } else if (char === ',') {
+            } else if (char === delimiter) {
               row.push(field);
               field = '';
             } else if (char === '\n' || char === '\r') {
@@ -100,6 +121,7 @@
             rows.push(row);
           }
 
+          while (rows.length && rows[0].every(value => !value.trim())) rows.shift();
           const headers = (rows.shift() || []).map(value => value.replace(/^\uFEFF/, '').trim());
           return rows.filter(values => values.some(value => value.trim())).map(values => {
             const record = Object.fromEntries(headers.map((header, index) => [header, values[index] || '']));
@@ -408,7 +430,9 @@
                     </div>
 
                     <div className={`flex w-full mt-8 transition-all duration-500 ${isCharacterLeft ? 'justify-start pl-4 md:pl-8' : 'justify-end pr-4 md:pr-8'}`}>
-                      <div className="text-7xl md:text-8xl animate-[bounce_2s_infinite] drop-shadow-[0_8px_8px_rgba(0,0,0,0.3)]">{authorAssets.avatar}</div>
+                      <div className="h-40 md:h-48 min-w-24 flex items-end justify-center animate-[bounce_2s_infinite]">
+                        <AuthorArtwork key={currentQuote.author} author={currentQuote.author} fallback={authorAssets.avatar} />
+                      </div>
                     </div>
                   </div>
                 ) : quotesLoading ? (
